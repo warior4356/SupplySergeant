@@ -124,4 +124,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 cfg.py
-outfile.csv
+*.csv
+client_secret.json
