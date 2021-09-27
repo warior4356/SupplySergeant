@@ -126,3 +126,4 @@ dmypy.json
 cfg.py
 *.csv
 client_secret.json
+.idea/

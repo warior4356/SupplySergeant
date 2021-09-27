@@ -36,6 +36,10 @@ client = gspread.authorize(creds)
 # list_of_hashes = sheet.get_all_records()
 # print(list_of_hashes)
 
+def get_refresh_token():
+    print(security.get_auth_uri(state='1234567890', scopes=['esi-markets.structure_markets.v1',
+                                                            'esi-contracts.read_corporation_contracts.v1']))
+    print(security.auth(cfg.auth_code))
 
 def _convert_swagger_dt(dt) -> datetime.datetime:
     """Converts a pyswagger timestamp.
@@ -130,7 +134,7 @@ def generate_report(file_name, station, ships, items, sheet_index):
             if result.get("status") == "outstanding" and result.get("type") == "item_exchange" \
                     and result.get("start_location_id") == station and \
                     _convert_swagger_dt(result.get("date_expired")) > datetime.datetime.utcnow():
-                sleep(.3)
+                sleep(.5)
                 op = app.op['get_corporations_corporation_id_contracts_contract_id_items'](
                     contract_id=result.get("contract_id"),
                     corporation_id=1018389948,
@@ -151,9 +155,13 @@ def generate_report(file_name, station, ships, items, sheet_index):
                     #     if _convert_swagger_dt(result.get("date_expired")) < datetime.datetime.utcnow():
                     #         print("expired")
                     # print(item.get("type_id"))
-                    if item.get("type_id") in ships.keys():
-                        ship_counts[item.get("type_id")] += 1
-                        break
+                    # print(item)
+                    if type(item) == str:
+                        print(item)
+                    else:
+                        if item.get("type_id") in ships.keys():
+                            ship_counts[item.get("type_id")] += 1
+                            break
 
     print(ship_counts)
 
@@ -196,10 +204,16 @@ def generate_report(file_name, station, ships, items, sheet_index):
 
 
 def main():
+    # get_refresh_token()
+
     # generate_report("7R5_7R.csv", 1032766218625, cfg.ships_7R5_7R, cfg.items_7R5_7R, 0)
     # generate_report("C0O6_K.csv", 1032819384255, cfg.ships_C0O6_K, cfg.items_C0O6_K, 2)
     # generate_report("FAT_6P.csv", 1033753242053, cfg.ships_FAT_6P, cfg.items_FAT_6P, 0)
-    generate_report("D_PNP9.csv", 1024004680659, cfg.ships_D_PNP9, cfg.items_D_PNP9, 0)
+    # generate_report("D_PNP9.csv", 1024004680659, cfg.ships_D_PNP9, cfg.items_D_PNP9, 0)
+    # generate_report("YZ9_F6.csv", 1034592395985, cfg.ships_YZ9_F6, cfg.items_YZ9_F6, 0)
+    # generate_report("T5ZI_S.csv", 1034877491366, cfg.ships_T5ZI_S, cfg.items_T5ZI_S, 0)
+    # generate_report("YAW_7M.csv", 1034857122560, cfg.ships_YAW_7M, cfg.items_YAW_7M, 2)
+    generate_report("T0DT_T.csv", 1037022454355, cfg.ships_T0DT_T, cfg.items_T0DT_T, 0)
 
 if __name__ == "__main__":
   main()
