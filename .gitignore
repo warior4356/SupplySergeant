@@ -123,7 +123,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-cfg.py
+cfg_old.py
 *.csv
 client_secret.json
 .idea/
+ships/
+cfg.py
+items.py
+ships.py

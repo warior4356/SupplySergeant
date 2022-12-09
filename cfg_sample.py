@@ -1,0 +1,5 @@
+secret = "google secret"
+agent = "contact email"
+refresh_token = "eve refresh token"
+client_id = "eve client id"
+auth_code = " eve auth code"
