@@ -108,9 +108,10 @@ def get_item_ids():
     types.close()
 
 
-def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, corporation_id):
+def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, corporation_id, region_id):
     staging_ships = dict()
     staging_items = dict()
+    contract_owners = dict()
 
     # Fetch items
     for item in item_list:
@@ -165,7 +166,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     # print(staging_items)
 
-    # Get contracts with ships
+    # Get corp/alliance contracts with ships
     contract_results = []
 
     op = app.op['get_corporations_corporation_id_contracts'](
@@ -202,7 +203,68 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
                     corporation_id=corporation_id,
                 )
                 # print(result)
+
+                contract_owners[result.get("contract_id")] = [result.get("title"), result.get("issuer_id")]
+
                 while(True):
+                    try:
+                        contents = esi_client.request(op)
+                    except:
+                        sleep(3)
+                        continue
+                    break
+
+                contract_types = list()
+
+                for item in contents.data:
+                    contract_types.append(item.get("type_id"))
+
+                for ship in staging_ships.keys():
+                    if all(item in contract_types for item in staging_ships[ship][2]):
+                        staging_ships[ship][0] += 1
+                    elif staging_ships[ship][2][0] in contract_types:
+                        staging_ships[ship][1] += 1
+
+    # Get public contracts with ships
+    contract_results = []
+
+    op = app.op['get_contracts_public_region_id'](
+        region_id=region_id,
+        page=1,
+    )
+
+    res = esi_client.head(op)
+
+    if res.status == 200:
+        number_of_page = res.header['X-Pages'][0]
+
+        # now we know how many pages we want, let's prepare all the requests
+        operations = []
+        for page in range(1, number_of_page + 1):
+            operations.append(
+                app.op['get_contracts_public_region_id'](
+                    region_id=region_id,
+                    page=page,
+                )
+            )
+
+        contract_results = esi_client.multi_request(operations)
+
+    # print(contract_results)
+    for pair in contract_results:
+        for result in pair[1].data:
+            if result.get("type") == "item_exchange" \
+                    and result.get("start_location_id") in station_ids and \
+                    _convert_swagger_dt(result.get("date_expired")) > datetime.datetime.utcnow():
+                sleep(.5)
+                op = app.op['get_contracts_public_items_contract_id'](
+                    contract_id=result.get("contract_id"),
+                )
+                # print(result)
+
+                contract_owners[result.get("contract_id")] = [result.get("title"), result.get("issuer_id")]
+
+                while (True):
                     try:
                         contents = esi_client.request(op)
                     except:
@@ -254,7 +316,16 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     sheet.update_cells(cell_list)
 
+    out_file.write("\n\n\nContract ID,Contract Name,Contract Owner\n")
+    for key in contract_owners:
+        try:
+            out_file.write(str(key) + "," + str(contract_owners[key][0]) + "," + str(contract_owners[key][1]) + "\n")
+        except:
+            out_file.write(str(key) + "," + "BAD NAME" + "," + str(contract_owners[key][1]) + "\n")
+
     out_file.close()
+
+    # print(contract_owners)
 
 
 def main():
@@ -262,9 +333,9 @@ def main():
     print("Connection established")
     get_item_ids()
     print("Item ids fetched")
-    generate_report("elanoda.csv", [1040246076254], ships.elanoda, items.elanoda, 0, 1018389948)
-    generate_report("enaluri.csv", [60015068], ships.enaluri, items.enaluri, 2, 1018389948)
-    generate_report("5ZXX_K.csv", [1038708751029, 1039071618828], ships._5ZXX_K, items._5ZXX_K, 4, 1018389948)
+    generate_report("elanoda.csv", [1040246076254], ships.elanoda, items.elanoda, 2, 1018389948, 10000016)
+    generate_report("enaluri.csv", [60015068], ships.enaluri, items.enaluri, 0, 1018389948, 10000069)
+    generate_report("5ZXX_K.csv", [1038708751029, 1039071618828], ships._5ZXX_K, items._5ZXX_K, 4, 1018389948, 10000023)
     # print(check_location(60012580, 30002005))
     # print(check_location(1037022287754, 30002005))
     # print(check_location(1038708751029, 30002005))
