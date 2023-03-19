@@ -109,9 +109,9 @@ def get_item_ids():
 
 
 def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index, corporation_id, region_id):
-    staging_ships = dict()
-    staging_charges = dict()  # [name, local_count, local_price,  jita_volume, jita_price]
-    staging_parts = dict()  # [name, local_count, local_price, jita_volume, jita_price]
+    staging_ships = dict()  # [match, hull match, parts, hull_id, max fittable from market]
+    staging_charges = dict()  # [name, local count, local price,  jita volume, jita price]
+    staging_parts = dict()  # [name, local count, local price, jita volume, jita price]
     contract_owners = dict()
 
     # Fetch items
@@ -123,20 +123,29 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
         fitting = open("ships/" + ship_name + ".txt", 'r', encoding='utf-8')
         ship_name = ship_name.strip("[]")
         lines = fitting.readlines()
-        staging_ships[ship_name] = [0, 0, [int(item_ids[ship_name.split(",")[0]])]]
+        ship_id = int(item_ids[ship_name.split(",")[0]])
+        staging_ships[ship_name] = [0, 0, {ship_id: 1}, ship_id, -1]
         staging_parts[int(item_ids[ship_name.split(",")[0]])] = [ship_name.split(",")[0], 0, 0, 0, 0]
         for line in lines[1:]:
             if line.strip() in item_ids.keys():
-                staging_ships[ship_name][2].append(int(item_ids[line.strip()]))
-                staging_parts[int(item_ids[line.strip()])] = [line.strip(), 0, 0, 0, 0]
+                module_id = int(item_ids[line.strip()])
+                staging_ships[ship_name][2][module_id] = staging_ships[ship_name][2].get(module_id, 0) + 1
+                staging_parts[module_id] = [line.strip(), 0, 0, 0, 0]
             elif line.strip().rsplit(',', 1)[0] in item_ids.keys():
                 parts = line.strip().rsplit(',', 1)
-                staging_ships[ship_name][2].append(int(item_ids[parts[0]]))
-                staging_parts[int(item_ids[parts[0]])] = [parts[0], 0, 0, 0, 0]
-                staging_charges[int(item_ids[parts[1].lstrip(' ')])] = [parts[1].lstrip(' '), 0, 0, 0, 0]
+                module_id = int(item_ids[parts[0]])
+                # charge_id = int(item_ids[parts[1].lstrip(' ')])
+                # print(charge_id)
+                staging_ships[ship_name][2][module_id] = staging_ships[ship_name][2].get(module_id, 0) + 1
+                # staging_ships[ship_name][2][charge_id] = staging_ships[ship_name][2].get(charge_id, 0) + 1
+                staging_parts[module_id] = [parts[0], 0, 0, 0, 0]
+                # staging_charges[charge_id] = [parts[1].lstrip(' '), 0, 0, 0, 0]
             elif line.strip().rsplit(' ', 1)[0] in item_ids.keys():
                 item_name = line.strip().rsplit(' ', 1)[0]
-                staging_charges[int(item_ids[item_name])] = [item_name, 0, 0, 0, 0]
+                count = line.strip().rsplit(' ', 1)[1].strip("x")
+                charge_id = int(item_ids[item_name])
+                staging_charges[charge_id] = [item_name, 0, 0, 0, 0]
+                staging_ships[ship_name][2][charge_id] = staging_ships[ship_name][2].get(charge_id, 0) + int(count)
         fitting.close()
     # print(staging_parts)
 
@@ -278,9 +287,9 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
                     contract_types.append(item.get("type_id"))
 
                 for ship in staging_ships.keys():
-                    if all(item in contract_types for item in staging_ships[ship][2]):
+                    if all(item in contract_types for item in staging_ships[ship][2].keys()):
                         staging_ships[ship][0] += 1
-                    elif staging_ships[ship][2][0] in contract_types:
+                    elif staging_ships[ship][3] in contract_types:
                         staging_ships[ship][1] += 1
 
     # Get public contracts with ships
@@ -336,35 +345,53 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
                     contract_types.append(item.get("type_id"))
 
                 for ship in staging_ships.keys():
-                    if all(item in contract_types for item in staging_ships[ship][2]):
+                    if all(item in contract_types for item in staging_ships[ship][2].keys()):
                         staging_ships[ship][0] += 1
-                    elif staging_ships[ship][2][0] in contract_types:
+                    elif staging_ships[ship][3] in contract_types:
                         staging_ships[ship][1] += 1
 
+    # Determine how many ships can be fit from what's on market
+    for ship in staging_ships.keys():
+        for item in staging_ships[ship][2].keys():
+            if item in staging_parts.keys() and staging_parts[item][1] > 0:
+                if staging_ships[ship][4] == -1 or \
+                        staging_parts[item][1] / staging_ships[ship][2][item] < staging_ships[ship][4]:
+                    staging_ships[ship][4] = int(staging_parts[item][1] / staging_ships[ship][2][item])
+            elif item in staging_charges.keys() and staging_charges[item][1] > 0:
+                if staging_ships[ship][4] == -1 or \
+                        staging_charges[item][1] / staging_ships[ship][2][item] < staging_ships[ship][4]:
+                    staging_ships[ship][4] = int(staging_charges[item][1] / staging_ships[ship][2][item])
+            else:
+                staging_ships[ship][4] = 0
+
+            # print(staging_ships[ship])
+
+    # print(staging_ships)
 
     # Write to outfile and google sheets
     out_file = open("output/" + file_name, 'w')
 
     # Ships
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index)
-    sheet.update_cell(1, 6, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 7, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
-    out_file.write("\n\n\nShip Name,Number Found,Hull Match Only,Number Expected,Missing\n")
+    out_file.write("\n\n\nShip Name,Number Found,Hull Match Only, Fits On Market\n")
     for key in staging_ships:
         out_file.write(key.strip(",") + "," + str(staging_ships[key][0]) + "," + str(staging_ships[key][1]) +
-                       str(staging_ships[key][2]) + "\n")
+                       str(staging_ships[key][4]) + "\n")
 
         cell_list.append(Cell(row=row, col=1, value=key))
         cell_list.append(Cell(row=row, col=2, value=int(staging_ships[key][0])))
         cell_list.append(Cell(row=row, col=3, value=int(staging_ships[key][1])))
+        cell_list.append(Cell(row=row, col=4, value=int(staging_ships[key][4])))
         row += 1
 
     sheet.update_cells(cell_list)
 
     # Charges
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 1)
-    sheet.update_cell(1, 8, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 9, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
     out_file.write("Item Name,Number Found,Number Expected,Missing\n")
@@ -383,7 +410,7 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
 
     # Parts
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 2)
-    sheet.update_cell(1, 8, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 9, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
     out_file.write("Item Name,Local Volume,Local Price,Jita Volume,Jita Price\n")
