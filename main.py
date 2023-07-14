@@ -391,10 +391,10 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
 
     # Charges
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 1)
-    sheet.update_cell(1, 9, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 11, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
-    out_file.write("Item Name,Number Found,Number Expected,Missing\n")
+    out_file.write("Item Name,Local Volume,Local Price,Jita Volume,Jita Price\n")
     for key in sorted(staging_charges.keys()):
         out_file.write(str(staging_charges[key][0]) + "," + str(staging_charges[key][1]) + str(staging_charges[key][2])
                        + str(staging_charges[key][3]) + str(staging_charges[key][4]) + "\n")
@@ -410,7 +410,7 @@ def generate_report(file_name, station_ids, ship_list, charge_list, sheet_index,
 
     # Parts
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 2)
-    sheet.update_cell(1, 9, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 11, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
     out_file.write("Item Name,Local Volume,Local Price,Jita Volume,Jita Price\n")
@@ -446,7 +446,7 @@ def main():
     print("Item ids fetched")
     # generate_report("elanoda.csv", [1040246076254], ships.elanoda, items.elanoda, 4, 1018389948, 10000016)
     # generate_report("enaluri.csv", [60015068], ships.enaluri, items.enaluri, 2, 1018389948, 10000069)
-    generate_report("UMI_KK.csv", [1036351551330], ships.UMI_KK, items.UMI_KK, 0, 1018389948, 10000010)
+    generate_report("UMI_KK.csv", [1036351551330], ships.preds, items.preds, 0, 1018389948, 10000010)
     # generate_report("5ZXX_K.csv", [1038708751029, 1039071618828], ships._5ZXX_K, items._5ZXX_K, 4, 1018389948, 10000023)
     # print(check_location(60012580, 30002005))
     # print(check_location(1037022287754, 30002005))
