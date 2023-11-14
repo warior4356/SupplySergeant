@@ -447,7 +447,7 @@ def main():
     # generate_report("elanoda.csv", [1040246076254], ships.elanoda, items.elanoda, 4, 1018389948, 10000016)
     # generate_report("enaluri.csv", [60015068], ships.enaluri, items.enaluri, 2, 1018389948, 10000069)
     # generate_report("UMI_KK.csv", [1036351551330], ships.preds, items.preds, 0, 1018389948, 10000010)
-    generate_report("GY5_26.csv", [1036351551330], ships.GY5_26, items.GY5_26, 0, 1018389948, 10000010)
+    generate_report("GY5_26.csv", [1036684561086], ships.GY5_26, items.GY5_26, 0, 1018389948, 10000035)
     # generate_report("5ZXX_K.csv", [1038708751029, 1039071618828], ships._5ZXX_K, items._5ZXX_K, 4, 1018389948, 10000023)
     # print(check_location(60012580, 30002005))
     # print(check_location(1037022287754, 30002005))
