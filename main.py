@@ -110,7 +110,7 @@ def get_item_ids():
 
 
 def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, corporation_id, region_id, contracts=True):
-    staging_ships = dict()  # [match, hull match, parts, hull_id, max fittable from market]
+    staging_ships = dict()  # [match, hull match, parts, hull_id, max fittable from market, target quantity]
     staging_charges = dict()  # [name, local count, local price,  jita volume, jita price, target quantity]
     staging_parts = dict()  # [name, local count, local price, jita volume, jita price, target quantity]
     contract_owners = dict()
@@ -382,7 +382,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     # Ships
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index)
-    sheet.update_cell(1, 7, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 8, str(datetime.datetime.utcnow()))
     cell_list = []
     row = 2
     out_file.write("\n\n\nShip Name,Number Found,Hull Match Only, Fits On Market\n")
@@ -394,6 +394,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
         cell_list.append(Cell(row=row, col=2, value=int(staging_ships[key][0])))
         cell_list.append(Cell(row=row, col=3, value=int(staging_ships[key][1])))
         cell_list.append(Cell(row=row, col=4, value=int(staging_ships[key][4])))
+        cell_list.append(Cell(row=row, col=5, value=int(staging_ships[key][5])))
         row += 1
 
     sheet.update_cells(cell_list)
