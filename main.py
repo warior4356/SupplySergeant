@@ -188,6 +188,51 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
                     if current_price == 0 or current_price > result.get("price"):
                         staging_parts[result.get("type_id")][2] = result.get("price")
 
+
+    # Get orders in stations with given items
+    for station_id in station_ids:
+        market_results = []
+        op = app.op['get_markets_region_id_orders'](
+            region_id=region_id,
+            order_type="sell",
+            page=1,
+        )
+
+        res = esi_client.head(op)
+
+        if res.status == 200:
+            number_of_pages = res.header['X-Pages'][0]
+            # print(number_of_pages)
+
+            # now we know how many pages we want, let's prepare all the requests
+            operations = []
+            for page in range(1, number_of_pages + 1):
+                operations.append(
+                    app.op['get_markets_region_id_orders'](
+                        region_id=region_id,
+                        order_type="sell",
+                        page=page,
+                    )
+                )
+
+            market_results = esi_client.multi_request(operations)
+            # print(market_results)
+
+        for pair in market_results:
+            for result in pair[1].data:
+                if result.get("location_id") == station_id:
+                    # print(result)
+                    if result.get("type_id") in staging_charges.keys():
+                        staging_charges[result.get("type_id")][1] += result.get("volume_remain")
+                        current_price = staging_charges[result.get("type_id")][2]
+                        if current_price == 0 or current_price > result.get("price"):
+                            staging_charges[result.get("type_id")][2] = result.get("price")
+                    if result.get("type_id") in staging_parts.keys():
+                        staging_parts[result.get("type_id")][1] += result.get("volume_remain")
+                        current_price = staging_parts[result.get("type_id")][2]
+                        if current_price == 0 or current_price > result.get("price"):
+                            staging_parts[result.get("type_id")][2] = result.get("price")
+
     # print(staging_parts)
 
     # Fetch Jita prices and volumes for comparison
@@ -220,17 +265,17 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     for pair in market_results:
         for result in pair[1].data:
-            # print(result)
-            if result.get("type_id") in staging_charges.keys():
-                staging_charges[result.get("type_id")][3] += result.get("volume_remain")
-                current_price = staging_charges[result.get("type_id")][4]
-                if current_price == 0 or current_price > result.get("price"):
-                    staging_charges[result.get("type_id")][4] = result.get("price")
-            if result.get("type_id") in staging_parts.keys():
-                staging_parts[result.get("type_id")][3] += result.get("volume_remain")
-                current_price = staging_parts[result.get("type_id")][4]
-                if current_price == 0 or current_price > result.get("price"):
-                    staging_parts[result.get("type_id")][4] = result.get("price")
+            if result.get("location_id") == 60003760:
+                if result.get("type_id") in staging_charges.keys():
+                    staging_charges[result.get("type_id")][3] += result.get("volume_remain")
+                    current_price = staging_charges[result.get("type_id")][4]
+                    if current_price == 0 or current_price > result.get("price"):
+                        staging_charges[result.get("type_id")][4] = result.get("price")
+                if result.get("type_id") in staging_parts.keys():
+                    staging_parts[result.get("type_id")][3] += result.get("volume_remain")
+                    current_price = staging_parts[result.get("type_id")][4]
+                    if current_price == 0 or current_price > result.get("price"):
+                        staging_parts[result.get("type_id")][4] = result.get("price")
 
 
     # Determine how many ships can be fit from what's on market
@@ -382,7 +427,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     # Ships
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index)
-    sheet.update_cell(1, 8, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 8, str(datetime.datetime.now(datetime.UTC)))
     cell_list = []
     row = 2
     out_file.write("\n\n\nShip Name,Number Found,Hull Match Only, Fits On Market\n")
@@ -401,7 +446,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     # Charges
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 1)
-    sheet.update_cell(1, 11, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 11, str(datetime.datetime.now(datetime.UTC)))
     cell_list = []
     row = 2
     out_file.write("Item Name,Local Volume,Local Price,Jita Volume,Jita Price\n")
@@ -421,7 +466,7 @@ def generate_report(file_name, station_ids, ship_list, item_list, sheet_index, c
 
     # Parts
     sheet = client.open("Staging Stocks").get_worksheet(sheet_index + 2)
-    sheet.update_cell(1, 11, str(datetime.datetime.utcnow()))
+    sheet.update_cell(1, 11, str(datetime.datetime.now(datetime.UTC)))
     cell_list = []
     row = 2
     out_file.write("Item Name,Local Volume,Local Price,Jita Volume,Jita Price\n")
@@ -460,6 +505,7 @@ def main():
     # generate_report("enaluri.csv", [60015068], ships.enaluri, items.enaluri, 2, 1018389948, 10000069)
     # generate_report("UMI_KK.csv", [1036351551330], ships.preds, items.preds, 0, 1018389948, 10000010)
     generate_report("3T7_M8.csv", [1043621617719], ships._3T7_M8, items._3T7_M8, 0, 1018389948, 10000035, contracts=False)
+    generate_report("Nakah.csv", [60014068], ships.Nakah, items.Nakah, 3, 1018389948, 10000001, contracts=False)
     # generate_report("F4R2_Q.csv", [1044008398262], ships.F4R2_Q, items.F4R2_Q, 3, 1018389948, 10000014)
     # generate_report("5ZXX_K.csv", [1038708751029, 1039071618828], ships._5ZXX_K, items._5ZXX_K, 4, 1018389948, 10000023)
     # print(check_location(60012580, 30002005))
